@@ -54,12 +54,14 @@ public class AsusDeviceProvider : AbstractRGBDeviceProvider
     /// <inheritdoc />
     protected override IEnumerable<IRGBDevice> LoadDevices()
     {
-        if (_sdk == null) yield break;
-
+        if (_sdk == null) {
+            yield break;
+        }
         _devices = _sdk.Enumerate(0);
         for (int i = 0; i < _devices.Count; i++)
         {
             IAuraSyncDevice device = _devices[i];
+
             yield return (AsusDeviceType)device.Type switch
             {
                 AsusDeviceType.MB_RGB => new AsusMainboardRGBDevice(new AsusRGBDeviceInfo(RGBDeviceType.Mainboard, device, WMIHelper.GetMainboardInfo()?.model ?? device.Name), GetUpdateTrigger()),
@@ -71,7 +73,8 @@ public class AsusDeviceProvider : AbstractRGBDeviceProvider
                 AsusDeviceType.NB_KB_RGB => new AsusKeyboardRGBDevice(new AsusKeyboardRGBDeviceInfo(device), LedMappings.KeyboardMapping, GetUpdateTrigger()),
                 AsusDeviceType.NB_KB_4ZONE_RGB => new AsusKeyboardRGBDevice(new AsusKeyboardRGBDeviceInfo(device), null, GetUpdateTrigger()),
                 AsusDeviceType.MOUSE_RGB => new AsusMouseRGBDevice(new AsusRGBDeviceInfo(RGBDeviceType.Mouse, device), GetUpdateTrigger()),
-                _ => new AsusUnspecifiedRGBDevice(new AsusRGBDeviceInfo(RGBDeviceType.Unknown, device), LedId.Custom1, GetUpdateTrigger())
+                AsusDeviceType.TERMINAL_RGB => new AsusUnspecifiedRGBDevice(new AsusRGBDeviceInfo(RGBDeviceType.LedController, device), LedId.Custom1, GetUpdateTrigger()),
+                _ => new AsusUnspecifiedRGBDevice(new AsusRGBDeviceInfo(RGBDeviceType.Unknown, device), LedId.Unknown1, GetUpdateTrigger())
             };
         }
     }
