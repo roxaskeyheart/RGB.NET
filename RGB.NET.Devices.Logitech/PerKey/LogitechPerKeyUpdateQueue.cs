@@ -25,19 +25,30 @@ public class LogitechPerKeyUpdateQueue : UpdateQueue
     #region Methods
 
     /// <inheritdoc />
-    protected override void Update(in ReadOnlySpan<(object key, Color color)> dataSet)
+    protected override bool Update(in ReadOnlySpan<(object key, Color color)> dataSet)
     {
-        _LogitechGSDK.LogiLedSetTargetDevice(LogitechDeviceCaps.PerKeyRGB);
-
-        foreach ((object key, Color color) in dataSet)
+        try
         {
-            // These will be LogitechLedId but the SDK expects an int and doesn't care about invalid values
-            int keyName = (int)key;
-            _LogitechGSDK.LogiLedSetLightingForKeyWithKeyName(keyName,
-                                                              (int)MathF.Round(color.R * 100),
-                                                              (int)MathF.Round(color.G * 100),
-                                                              (int)MathF.Round(color.B * 100));
+            _LogitechGSDK.LogiLedSetTargetDevice(LogitechDeviceCaps.PerKeyRGB);
+
+            foreach ((object key, Color color) in dataSet)
+            {
+                // These will be LogitechLedId but the SDK expects an int and doesn't care about invalid values
+                int keyName = (int)key;
+                _LogitechGSDK.LogiLedSetLightingForKeyWithKeyName(keyName,
+                                                                  (int)MathF.Round(color.R * 100),
+                                                                  (int)MathF.Round(color.G * 100),
+                                                                  (int)MathF.Round(color.B * 100));
+            }
+
+            return true;
         }
+        catch (Exception ex)
+        {
+            LogitechDeviceProvider.Instance.Throw(ex);
+        }
+
+        return false;
     }
 
     #endregion

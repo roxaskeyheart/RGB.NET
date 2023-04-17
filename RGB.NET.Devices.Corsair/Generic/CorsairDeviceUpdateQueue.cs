@@ -13,6 +13,8 @@ public class CorsairDeviceUpdateQueue : UpdateQueue
 {
     #region Properties & Fields
 
+    private bool _isDisposed = false;
+
     private readonly _CorsairDeviceInfo _device;
     private readonly nint _colorPtr;
 
@@ -38,19 +40,33 @@ public class CorsairDeviceUpdateQueue : UpdateQueue
     #region Methods
 
     /// <inheritdoc />
-    protected override unsafe void Update(in ReadOnlySpan<(object key, Color color)> dataSet)
+    protected override unsafe bool Update(in ReadOnlySpan<(object key, Color color)> dataSet)
     {
-        Span<_CorsairLedColor> colors = new((void*)_colorPtr, dataSet.Length);
-        for (int i = 0; i < colors.Length; i++)
+        try
         {
-            (object id, Color color) = dataSet[i];
-            (byte a, byte r, byte g, byte b) = color.GetRGBBytes();
-            colors[i] = new _CorsairLedColor((CorsairLedId)id, r, g, b, a);
+            if (_isDisposed) throw new ObjectDisposedException(nameof(CorsairDeviceUpdateQueue));
+            if (!_CUESDK.IsConnected) return false;
+
+            Span<_CorsairLedColor> colors = new((void*)_colorPtr, dataSet.Length);
+            for (int i = 0; i < colors.Length; i++)
+            {
+                (object id, Color color) = dataSet[i];
+                (byte a, byte r, byte g, byte b) = color.GetRGBBytes();
+                colors[i] = new _CorsairLedColor((CorsairLedId)id, r, g, b, a);
+            }
+
+            CorsairError error = _CUESDK.CorsairSetLedColors(_device.id!, dataSet.Length, _colorPtr);
+            if (error != CorsairError.Success)
+                throw new RGBDeviceException($"Failed to update device '{_device.id}'. (ErrorCode: {error})");
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            CorsairDeviceProvider.Instance.Throw(ex);
         }
 
-        CorsairError error = _CUESDK.CorsairSetLedColors(_device.id!, dataSet.Length, _colorPtr);
-        if (error != CorsairError.Success)
-            throw new RGBDeviceException($"Failed to update device '{_device.id}'. (ErrorCode: {error})");
+        return false;
     }
 
     /// <inheritdoc />
@@ -58,6 +74,7 @@ public class CorsairDeviceUpdateQueue : UpdateQueue
     {
         base.Dispose();
 
+        _isDisposed = true;
         Marshal.FreeHGlobal(_colorPtr);
 
         GC.SuppressFinalize(this);

@@ -85,6 +85,8 @@ public abstract class AbstractRGBDevice<TDeviceInfo> : Placeable, IRGBDevice<TDe
     {
         this.DeviceInfo = deviceInfo;
         this.UpdateQueue = updateQueue;
+
+        UpdateQueue.AddReferencingObject(this);
     }
 
     #endregion
@@ -111,7 +113,7 @@ public abstract class AbstractRGBDevice<TDeviceInfo> : Placeable, IRGBDevice<TDe
     /// </summary>
     /// <param name="flushLeds">Forces all LEDs to be treated as dirty.</param>
     /// <returns>The collection LEDs to update.</returns>
-    protected virtual IEnumerable<Led> GetLedsToUpdate(bool flushLeds) => ((RequiresFlush || flushLeds) ? LedMapping.Values : LedMapping.Values.Where(x => x.IsDirty)).Where(led => led.RequestedColor?.A > 0);
+    protected virtual IEnumerable<Led> GetLedsToUpdate(bool flushLeds) => ((RequiresFlush || flushLeds || UpdateQueue.RequiresFlush) ? LedMapping.Values : LedMapping.Values.Where(x => x.IsDirty)).Where(led => led.RequestedColor?.A > 0);
 
     /// <summary>
     /// Gets an enumerable of a custom data and color tuple for the specified leds.
@@ -157,7 +159,13 @@ public abstract class AbstractRGBDevice<TDeviceInfo> : Placeable, IRGBDevice<TDe
     /// <inheritdoc />
     public virtual void Dispose()
     {
-        try { UpdateQueue.Dispose(); } catch { /* :( */ }
+        try
+        {
+            UpdateQueue.RemoveReferencingObject(this);
+            if (!UpdateQueue.HasActiveReferences())
+                UpdateQueue.Dispose();
+        }
+        catch { /* :( */ }
         try { LedMapping.Clear(); } catch { /* this really shouldn't happen */ }
 
         IdGenerator.ResetCounter(GetType().Assembly);
