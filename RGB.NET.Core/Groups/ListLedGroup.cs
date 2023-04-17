@@ -1,7 +1,9 @@
 ﻿// ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable UnusedMember.Global
 
+using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace RGB.NET.Core;
 
@@ -12,6 +14,8 @@ namespace RGB.NET.Core;
 public class ListLedGroup : AbstractLedGroup
 {
     #region Properties & Fields
+
+    private readonly ActionDisposable _unlockDisposable;
 
     /// <summary>
     /// Gets the list containing the <see cref="Led"/> of this <see cref="ListLedGroup"/>.
@@ -29,7 +33,9 @@ public class ListLedGroup : AbstractLedGroup
     /// <param name="surface">Specifies the surface to attach this group to or <c>null</c> if the group should not be attached on creation.</param>
     public ListLedGroup(RGBSurface? surface)
         : base(surface)
-    { }
+    {
+        _unlockDisposable = new ActionDisposable(Unlock);
+    }
 
     /// <inheritdoc />
     /// <summary>
@@ -40,6 +46,8 @@ public class ListLedGroup : AbstractLedGroup
     public ListLedGroup(RGBSurface? surface, IEnumerable<Led> leds)
         : base(surface)
     {
+        _unlockDisposable = new ActionDisposable(Unlock);
+
         AddLeds(leds);
     }
 
@@ -52,6 +60,8 @@ public class ListLedGroup : AbstractLedGroup
     public ListLedGroup(RGBSurface? surface, params Led[] leds)
         : base(surface)
     {
+        _unlockDisposable = new ActionDisposable(Unlock);
+
         AddLeds(leds);
     }
 
@@ -134,6 +144,15 @@ public class ListLedGroup : AbstractLedGroup
         lock (GroupLeds)
             return new List<Led>(GroupLeds);
     }
+
+    protected override IDisposable ToListUnsafe(out IList<Led> leds)
+    {
+        Monitor.Enter(GroupLeds);
+        leds = GroupLeds;
+        return _unlockDisposable;
+    }
+
+    private void Unlock() => Monitor.Exit(GroupLeds);
 
     #endregion
 }
