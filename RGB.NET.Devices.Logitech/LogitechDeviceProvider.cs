@@ -9,6 +9,7 @@ using RGB.NET.Core;
 using RGB.NET.Devices.Logitech.Native;
 using RGB.NET.Devices.Logitech.HID;
 using RGB.NET.HID;
+using System.Diagnostics;
 
 namespace RGB.NET.Devices.Logitech;
 
@@ -198,6 +199,7 @@ public class LogitechDeviceProvider : AbstractRGBDeviceProvider
     {
         #region PerKey
 
+
         if (_perKeyUpdateQueue != null)
         {
             (HIDDeviceDefinition<LogitechLedId, int> definition, HidDevice device) perKeyDevice = PerKeyDeviceDefinitions.GetConnectedDevices().FirstOrDefault();
@@ -209,8 +211,11 @@ public class LogitechDeviceProvider : AbstractRGBDeviceProvider
             else
             {
                 HIDDeviceDefinition<LogitechLedId, int>? perKeyWirelessDevice = PerKeyWirelessDeviceDefinitions.GetConnectedDevices().FirstOrDefault();
+                                
                 if (perKeyWirelessDevice != null)
+                {
                     yield return new LogitechPerKeyRGBDevice(new LogitechRGBDeviceInfo(perKeyWirelessDevice.DeviceType, perKeyWirelessDevice.Name, LogitechDeviceCaps.PerKeyRGB, 0), _perKeyUpdateQueue, perKeyWirelessDevice.LedMapping);
+                }
             }
         }
 
